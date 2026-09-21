@@ -1,0 +1,238 @@
+// Schema do ogoat — simulador de carreira de futebol
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Catálogo (dados do "mundo" do jogo) ----------
+
+model Country {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  code    String  @unique // ISO2, usado pra bandeira
+  flag    String // emoji da bandeira
+  leagues League[]
+  players Player[]
+
+  @@map("countries")
+}
+
+model League {
+  id        String  @id @default(cuid())
+  name      String
+  tier      Int // 1 = elite, 2 = segunda divisão, 3 = base/acesso
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id])
+  teams     Team[]
+
+  @@unique([countryId, tier])
+  @@map("leagues")
+}
+
+model Team {
+  id             String  @id @default(cuid())
+  name           String
+  shortName      String
+  leagueId       String
+  league         League  @relation(fields: [leagueId], references: [id])
+  reputation     Int // 1-99, define força/orçamento do clube
+  colorPrimary   String // hex
+  colorSecondary String // hex
+  crestShape     Int // 0-5, variação do brasão gerado em svg
+  crestInitials  String // 2-3 letras usadas no brasão
+
+  playersAtTeam   Player[]        @relation("CurrentTeam")
+  careerStages    CareerStage[]
+  trophies        Trophy[]
+  transfersFrom   TransferRecord[] @relation("TransferFrom")
+  transfersTo     TransferRecord[] @relation("TransferTo")
+
+  @@map("teams")
+}
+
+// ---------- Enums de jogo ----------
+
+enum Position {
+  GOL // goleiro
+  ZAG // zagueiro
+  LAT // lateral
+  VOL // volante
+  MEI // meia
+  PON // ponta
+  ATA // atacante
+
+  @@map("position")
+}
+
+enum Foot {
+  LEFT
+  RIGHT
+  BOTH
+
+  @@map("foot")
+}
+
+enum PlayerStatus {
+  ACTIVE
+  RETIRED
+  ABANDONED
+
+  @@map("player_status")
+}
+
+enum TransferType {
+  TRANSFER
+  RENEWAL
+  FREE
+  LOAN
+  YOUTH_PROMOTION
+
+  @@map("transfer_type")
+}
+
+// ---------- Carreira do jogador ----------
+
+model Player {
+  id        String @id @default(cuid())
+  sessionId String // cookie anônimo do navegador
+
+  name         String
+  countryId    String
+  country      Country  @relation(fields: [countryId], references: [id])
+  position     Position
+  foot         Foot
+
+  age    Int @default(16)
+  status PlayerStatus @default(ACTIVE)
+
+  // atributos 1-99
+  pace      Int
+  shooting  Int
+  passing   Int
+  dribbling Int
+  defending Int
+  physical  Int
+  potential Int // teto oculto de evolução
+
+  morale     Int @default(70) // 0-100
+  fitness    Int @default(95) // 0-100
+  reputation Int @default(5) // 0-100
+  marketValue Int @default(0) // em milhares de euros
+  wage        Int @default(0) // em euros/mês
+
+  currentTeamId String?
+  currentTeam   Team?   @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+
+  retiredAge Int?
+
+  // estado efêmero do ciclo em andamento (fica nulo enquanto não há decisão pendente)
+  pendingSummary Json?
+  pendingOffers  Json?
+  pendingEvent   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stages         CareerStage[]
+  transfers      TransferRecord[]
+  choices        ExtraCampoChoice[]
+  trophies       Trophy[]
+
+  @@index([sessionId])
+  @@map("players")
+}
+
+// Um "ciclo" de 2 anos jogado em um clube
+model CareerStage {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  startAge Int
+  endAge   Int
+
+  appearances Int
+  goals       Int
+  assists     Int
+  avgRating   Float
+  injuries    Int @default(0)
+
+  overallAtEnd Int
+  summary      String @db.Text
+
+  createdAt DateTime @default(now())
+
+  trophies Trophy[]
+
+  @@index([playerId])
+  @@map("career_stages")
+}
+
+model TransferRecord {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  fromTeamId String?
+  fromTeam   Team?   @relation("TransferFrom", fields: [fromTeamId], references: [id])
+  toTeamId   String
+  toTeam     Team    @relation("TransferTo", fields: [toTeamId], references: [id])
+
+  age  Int
+  fee  Int // milhares de euros
+  wage Int // euros/mês
+  type TransferType
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+  @@map("transfer_records")
+}
+
+model ExtraCampoChoice {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  age         Int
+  eventKey    String
+  eventTitle  String
+  optionKey   String
+  optionLabel String
+  effects     Json
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+  @@map("extra_campo_choices")
+}
+
+model Trophy {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  stageId String?
+  stage   CareerStage? @relation(fields: [stageId], references: [id])
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  name String
+  age  Int
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+  @@map("trophies")
+}
