@@ -10,19 +10,28 @@ export type OfferTeam = {
   colorSecondary: string;
   crestShape: number;
   crestInitials: string;
+  crestUrl: string | null;
   leagueName: string;
   leagueTier: number;
   countryName: string;
+  countryFlag: string;
+  countryCode: string;
 };
 
 export type TransferOffer = {
   key: string;
-  kind: "RENEWAL" | "TRANSFER" | "LOAN";
+  kind: "BASE" | "RENEWAL" | "TRANSFER" | "LOAN";
   team: OfferTeam;
   fee: number;
   wage: number;
   pitch: string;
 };
+
+const PITCHES_BASE = [
+  "Um projeto de base pra te lançar no profissional.",
+  "Uma chance de mostrar serviço desde cedo.",
+  "Comissão técnica de olho no seu potencial.",
+];
 
 const PITCHES_UP = [
   "Um projeto ambicioso te quer como peça-chave.",
@@ -95,10 +104,13 @@ export function generateTransferOffers(
     chosenTeams.push({ team: pick(rand, lateral), kind: "TRANSFER" });
   }
 
-  const remainingPool = shuffle(rand, pool.filter((t) => !chosenTeams.some((c) => c.team.id === t.id)));
-  const secondPool = lateral.length > 0 ? shuffle(rand, lateral.filter((t) => !chosenTeams.some((c) => c.team.id === t.id))) : remainingPool;
-  const second = secondPool[0] ?? remainingPool[0];
-  if (second) chosenTeams.push({ team: second, kind: "TRANSFER" });
+  // garante sempre 2 propostas além da renovação (fallback pro pool inteiro embaralhado)
+  const shuffledPool = shuffle(rand, pool);
+  for (const team of shuffledPool) {
+    if (chosenTeams.length >= 2) break;
+    if (chosenTeams.some((c) => c.team.id === team.id)) continue;
+    chosenTeams.push({ team, kind: "TRANSFER" });
+  }
 
   for (const { team, kind } of chosenTeams.slice(0, 2)) {
     const diff = team.reputation - playerPower;
@@ -123,4 +135,32 @@ export function generateTransferOffers(
 
 function pick<T>(rand: RandomFn, arr: readonly T[]): T {
   return arr[Math.floor(rand() * arr.length)];
+}
+
+// oferta de base: 3 clubes pra começar a carreira (sem clube atual pra renovar).
+// prioriza clubes mais modestos, condizentes com um jovem de 16 anos saindo da base.
+export function generateInitialOffers(rand: RandomFn, opts: { overall: number; candidates: OfferTeam[] }): TransferOffer[] {
+  const { overall, candidates } = opts;
+  const sorted = [...candidates].sort((a, b) => a.reputation - b.reputation);
+  const modestPoolSize = Math.max(3, Math.round(sorted.length * 0.35));
+  const modestPool = sorted.slice(0, modestPoolSize);
+
+  const chosen: OfferTeam[] = [];
+  const shuffled = shuffle(rand, modestPool);
+  for (const team of shuffled) {
+    if (chosen.length >= 3) break;
+    chosen.push(team);
+  }
+
+  return chosen.map((team) => {
+    const wage = clamp(Math.round(200 + overall * 4 + team.reputation * 3), 350, 5000);
+    return {
+      key: `base-${team.id}`,
+      kind: "BASE" as const,
+      team,
+      fee: 0,
+      wage,
+      pitch: pick(rand, PITCHES_BASE),
+    };
+  });
 }

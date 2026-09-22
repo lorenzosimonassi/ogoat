@@ -1,67 +1,112 @@
 import Link from "next/link";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { PlayerHeaderCard } from "@/components/game/player-header-card";
-import { getPlayerById } from "@/lib/queries";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { CareerHeader, TrophyVitrine } from "@/components/game/career-header";
+import { CareerTable } from "@/components/game/career-table";
+import { DecisionPanel } from "@/components/game/decision-panel";
+import { getFullCareer } from "@/lib/queries";
 import { getSessionId } from "@/lib/session";
-import { advanceCycle, retireNow } from "@/actions";
+import { submitDecision, retireNow } from "@/actions";
+import { overallFor } from "@/lib/game/attributes";
 import { canRetireVoluntarily } from "@/lib/game/retirement";
+import { POSITION_LABEL } from "@/lib/game/constants";
+import type { PendingDecision } from "@/lib/game/decision";
 
 export default async function CarreiraPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const sessionId = await getSessionId();
-  const player = await getPlayerById(id);
+  const career = await getFullCareer(id);
 
-  if (!player || player.sessionId !== sessionId) notFound();
-  if (player.status === "RETIRED") redirect(`/carreira/${id}/aposentadoria`);
-  if (player.status === "ABANDONED") notFound();
-  if (player.pendingOffers && player.pendingEvent) redirect(`/carreira/${id}/decisao`);
+  if (!career || career.sessionId !== sessionId) notFound();
+  if (career.status === "ABANDONED") notFound();
 
-  const canRetire = canRetireVoluntarily(player.age);
+  const ovr = overallFor(career.position, {
+    pace: career.pace,
+    shooting: career.shooting,
+    passing: career.passing,
+    dribbling: career.dribbling,
+    defending: career.defending,
+    physical: career.physical,
+  });
+
+  const totals = career.stages.reduce(
+    (acc, s) => ({
+      appearances: acc.appearances + s.appearances,
+      goals: acc.goals + s.goals,
+      assists: acc.assists + s.assists,
+    }),
+    { appearances: 0, goals: 0, assists: 0 },
+  );
+
+  const isActive = career.status === "ACTIVE";
+  const pendingDecision = career.pendingDecision as unknown as PendingDecision | null;
+  const canRetire = isActive && canRetireVoluntarily(career.age);
+  const clubs = Array.from(new Set(career.stages.map((s) => s.team.name)));
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-10">
-      <PlayerHeaderCard
-        name={player.name}
-        age={player.age}
-        position={player.position}
-        attrs={{
-          pace: player.pace,
-          shooting: player.shooting,
-          passing: player.passing,
-          dribbling: player.dribbling,
-          defending: player.defending,
-          physical: player.physical,
-        }}
-        potential={player.potential}
-        morale={player.morale}
-        fitness={player.fitness}
-        reputation={player.reputation}
-        marketValue={player.marketValue}
-        wage={player.wage}
-        countryFlag={player.country.flag}
-        team={player.currentTeam}
-      />
+    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+      <div className="grid gap-6 lg:grid-cols-[400px_1fr] lg:items-start">
+        <Card className="border-border/70 pitch-glow">
+          <CardContent className="space-y-5">
+            <CareerHeader
+              name={career.name}
+              countryFlag={career.country.flag}
+              shirtNumber={career.shirtNumber}
+              position={career.position}
+              age={career.age}
+              ovr={ovr}
+              marketValue={career.marketValue}
+              wage={career.wage}
+              team={career.currentTeam}
+              totals={totals}
+            />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" className="text-muted-foreground" nativeButton={false} render={<Link href={`/carreira/${id}/historico`} />}>
-          Ver histórico da carreira →
-        </Button>
+            <Separator />
+            <TrophyVitrine trophies={career.trophies} />
+            <Separator />
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {canRetire && (
-            <form action={retireNow.bind(null, id)}>
-              <Button type="submit" variant="outline">
-                Pendurar as chuteiras
-              </Button>
-            </form>
-          )}
-          <form action={advanceCycle.bind(null, id)}>
-            <Button type="submit" size="lg">
-              Avançar 2 anos ({player.age} → {player.age + 2})
-            </Button>
-          </form>
-        </div>
+            {isActive && pendingDecision ? (
+              <DecisionPanel action={submitDecision.bind(null, id)} decision={pendingDecision} />
+            ) : (
+              <div className="space-y-3 text-center">
+                <p className="text-lg font-bold">🐐 Carreira encerrada</p>
+                <p className="text-sm text-muted-foreground">
+                  {POSITION_LABEL[career.position]} · aposentado aos {career.retiredAge} anos
+                  {clubs.length > 0 && <> · defendeu {clubs.join(" → ")}</>}
+                </p>
+                <Button size="lg" className="w-full" nativeButton={false} render={<Link href="/novo" />}>
+                  Começar nova carreira
+                </Button>
+              </div>
+            )}
+
+            {canRetire && (
+              <form action={retireNow.bind(null, id)}>
+                <Button type="submit" variant="ghost" className="w-full text-muted-foreground">
+                  Pendurar as chuteiras
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70">
+          <CardContent className="p-0">
+            <CareerTable
+              stages={career.stages}
+              pendingDecision={pendingDecision}
+              currentAge={career.age}
+              currentOvr={ovr}
+              currentTeam={career.currentTeam}
+              isActive={isActive}
+              countryFlag={career.country.flag}
+              countryName={career.country.name}
+              totals={totals}
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ export function CreateCareerForm({ countries }: { countries: Country[] }) {
   const selectedCountry = useMemo(() => countries.find((c) => c.id === countryId), [countries, countryId]);
 
   function handleSuggestName() {
-    const code = (selectedCountry?.code ?? "BR") as CountryCode;
+    const code = (selectedCountry?.code ?? "BRA") as CountryCode;
     setName(suggestPlayerName(Math.random, code));
   }
 

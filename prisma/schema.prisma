@@ -45,8 +45,9 @@ model Team {
   reputation     Int // 1-99, define força/orçamento do clube
   colorPrimary   String // hex
   colorSecondary String // hex
-  crestShape     Int // 0-5, variação do brasão gerado em svg
+  crestShape     Int // 0-5, variação do brasão gerado em svg (fallback quando crestUrl é nulo)
   crestInitials  String // 2-3 letras usadas no brasão
+  crestUrl       String? // escudo oficial (PNG) retornado pela football-data.org
 
   playersAtTeam   Player[]        @relation("CurrentTeam")
   careerStages    CareerStage[]
@@ -109,8 +110,9 @@ model Player {
   position     Position
   foot         Foot
 
-  age    Int @default(16)
-  status PlayerStatus @default(ACTIVE)
+  age         Int @default(16)
+  status      PlayerStatus @default(ACTIVE)
+  shirtNumber Int
 
   // atributos 1-99
   pace      Int
@@ -132,10 +134,8 @@ model Player {
 
   retiredAge Int?
 
-  // estado efêmero do ciclo em andamento (fica nulo enquanto não há decisão pendente)
-  pendingSummary Json?
-  pendingOffers  Json?
-  pendingEvent   Json?
+  // decisão aguardando resposta do jogador (TRANSFER ou EXTRA_CAMPO) — null só quando aposentado
+  pendingDecision Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

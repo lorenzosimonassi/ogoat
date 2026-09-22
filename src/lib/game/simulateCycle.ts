@@ -31,7 +31,9 @@ const CLEAN_SHEET_TROPHY_RATE: Record<Position, number> = {
   ATA: 0.02,
 };
 
-const MAX_GAMES_PER_CYCLE = 68; // ~2 temporadas de 34 jogos
+// ~2 temporadas de até ~55 jogos cada (liga + copas nacionais + competição continental
+// pra quem é titular absoluto de um time grande) — bem menos pra reservas e pra base
+const MAX_GAMES_PER_CYCLE = 110;
 
 export type CycleResult = {
   appearances: number;
@@ -71,15 +73,20 @@ export function simulateCycle(
     missedGames = injuries * randInt(rand, 4, 12);
   }
 
-  const minutesShare = clamp(0.35 + gap / 140 + (moraleFactor - 1) * 0.3, 0.1, 0.97) * ageFactor;
+  // quanto maior o OVR (em relação ao nível do time), mais minutos — a diferença entre
+  // ser reserva e titular indiscutível fica bem mais marcada
+  const minutesShare = clamp(0.3 + gap / 90 + (moraleFactor - 1) * 0.3, 0.05, 0.98) * ageFactor;
   const appearances = clamp(Math.round(MAX_GAMES_PER_CYCLE * minutesShare) - missedGames, 0, MAX_GAMES_PER_CYCLE);
 
-  const goalRate = GOAL_RATE_BY_POSITION[position] * (0.5 + overall / 100);
-  const assistRate = ASSIST_RATE_BY_POSITION[position] * (0.5 + overall / 100);
+  // produção (gols/assistências) escala com o OVR absoluto, não só com o gap pro time —
+  // um jogador de 90 OVR claramente produz muito mais que um de 50, em qualquer time
+  const productionMultiplier = clamp(0.55 + (overall - 50) / 40, 0.3, 2.2);
+  const goalRate = GOAL_RATE_BY_POSITION[position] * productionMultiplier;
+  const assistRate = ASSIST_RATE_BY_POSITION[position] * productionMultiplier;
   const goals = Math.round(appearances * goalRate * randFloat(rand, 0.7, 1.35));
   const assists = Math.round(appearances * assistRate * randFloat(rand, 0.7, 1.35));
 
-  const ratingBase = 6.1 + gap / 55 + (moraleFactor - 1) * 0.6;
+  const ratingBase = 6.1 + gap / 45 + (moraleFactor - 1) * 0.6;
   const avgRating = clamp(ratingBase + randFloat(rand, -0.35, 0.35), 4.8, 9.4);
 
   const fitnessAfter = clamp(fitness - injuries * 8 + randInt(rand, -4, 6), 25, 100);

@@ -36,8 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <TooltipProvider delay={200}>
           <SiteHeader />
           <main className="flex flex-1 flex-col">{children}</main>
-          <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
-            ogoat — simulador de carreira de futebol. Times e ligas são fictícios.
+          <footer className="border-t border-border/60 px-4 py-6 text-center text-xs text-muted-foreground">
+            Os nomes e referências a clubes de futebol são utilizados exclusivamente para fins de identificação
+            dentro da simulação. Esta plataforma não é afiliada, patrocinada nem endossada pelos clubes
+            mencionados, salvo indicação expressa em contrário.
           </footer>
           <Toaster theme="dark" position="bottom-right" />
         </TooltipProvider>

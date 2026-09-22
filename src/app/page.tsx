@@ -54,17 +54,17 @@ export default async function Home() {
         <FeatureCard
           emoji="🌱"
           title="Comece do zero"
-          description="Escolha nome, posição, nacionalidade e pé preferido. Você entra aos 16 anos num time da divisão de acesso."
+          description="Escolha nome, posição, nacionalidade e pé preferido. Aos 16 anos, três clubes de base disputam sua assinatura."
         />
         <FeatureCard
           emoji="🔁"
           title="Ciclos de 2 em 2 anos"
-          description="Cada ciclo simula duas temporadas. No fim, você vê o resultado e decide o próximo passo."
+          description="Cada decisão já simula os 2 anos seguintes na hora — sua tabela de temporadas vai se atualizando sozinha."
         />
         <FeatureCard
           emoji="⚖️"
-          title="Campo e fora dele"
-          description="Escolha propostas de transferência e também momentos extra-campo que moldam moral, reputação e valor de mercado."
+          title="Transferência ou extra-campo"
+          description="70% das vezes você escolhe entre 3 propostas de transferência; 30% é um momento extra-campo que mexe direto no seu OVR."
         />
       </section>
 
@@ -73,7 +73,7 @@ export default async function Home() {
           <h2 className="mb-4 text-lg font-bold">Suas carreiras encerradas</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             {retiredCareers.map((p) => (
-              <Link key={p.id} href={`/carreira/${p.id}/aposentadoria`}>
+              <Link key={p.id} href={`/carreira/${p.id}`}>
                 <Card className="h-full border-border/60 transition-colors hover:border-primary/50">
                   <CardContent className="flex items-center gap-3">
                     {p.currentTeam && (

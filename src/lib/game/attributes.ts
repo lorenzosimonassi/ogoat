@@ -17,34 +17,44 @@ export function overallFor(position: Position, attrs: Attributes): number {
   return Math.round(clamp(raw, 1, 99));
 }
 
-// 16 anos: base baixa (revelação da base), com um leve boost no atributo-chave da posição
+// 16 anos: todo jogador começa com OVR 50 — só varia a "forma" dos atributos
+// (mais rápido, mais técnico etc.), nunca o total.
 export function generateInitialAttributes(rand: RandomFn, position: Position): Attributes {
   const weights = POSITION_WEIGHTS[position];
   const base: Attributes = {
-    pace: randInt(rand, 32, 52),
-    shooting: randInt(rand, 25, 48),
-    passing: randInt(rand, 30, 50),
-    dribbling: randInt(rand, 30, 52),
-    defending: randInt(rand, 25, 48),
-    physical: randInt(rand, 35, 55),
+    pace: randInt(rand, 40, 60),
+    shooting: randInt(rand, 35, 55),
+    passing: randInt(rand, 38, 58),
+    dribbling: randInt(rand, 38, 60),
+    defending: randInt(rand, 35, 55),
+    physical: randInt(rand, 42, 62),
   };
   for (const key of ATTRIBUTE_KEYS) {
     if (weights[key] >= 0.25) {
-      base[key] = clamp(base[key] + randInt(rand, 4, 10), 1, 70);
+      base[key] = clamp(base[key] + randInt(rand, 3, 8), 1, 80);
     }
   }
-  return base;
+  return applyOvrDelta(base, 50 - overallFor(position, base));
 }
 
 export function generatePotential(rand: RandomFn, currentOverall: number): number {
-  // teto entre +8 e +45 acima do overall inicial, com viés pra faixa "boa promessa"
+  // teto acima do overall inicial (50) — a maioria vira um jogador bom a ótimo,
+  // com chance real de virar craque mundial (90+) e uma fatia menor de carreira mais modesta
   const roll = rand();
   let ceiling: number;
-  if (roll < 0.5) ceiling = randInt(rand, 8, 20);
-  else if (roll < 0.82) ceiling = randInt(rand, 20, 32);
-  else if (roll < 0.96) ceiling = randInt(rand, 32, 42);
-  else ceiling = randInt(rand, 42, 50);
+  if (roll < 0.15) ceiling = randInt(rand, 10, 20); // 60-70: discreto
+  else if (roll < 0.55) ceiling = randInt(rand, 20, 32); // 70-82: bom profissional
+  else if (roll < 0.85) ceiling = randInt(rand, 32, 42); // 82-92: craque
+  else ceiling = randInt(rand, 42, 49); // 92-99: fenômeno
   return clamp(currentOverall + ceiling, 1, 99);
+}
+
+// aplica um delta uniforme em todos os atributos — como os pesos por posição somam 1,
+// o OVR resultante se move exatamente por `delta` (respeitados os limites 1-99)
+export function applyOvrDelta(attrs: Attributes, delta: number): Attributes {
+  const next = { ...attrs };
+  for (const key of ATTRIBUTE_KEYS) next[key] = clamp(attrs[key] + delta, 1, 99);
+  return next;
 }
 
 export function potentialStars(potential: number): number {

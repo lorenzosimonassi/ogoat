@@ -18,11 +18,24 @@ export type TeamCrestProps = {
   colorSecondary: string;
   crestShape: number;
   crestInitials: string;
+  crestUrl?: string | null;
   size?: number;
   className?: string;
 };
 
-export function TeamCrest({ colorPrimary, colorSecondary, crestShape, crestInitials, size = 40, className }: TeamCrestProps) {
+export function TeamCrest({ colorPrimary, colorSecondary, crestShape, crestInitials, crestUrl, size = 40, className }: TeamCrestProps) {
+  if (crestUrl) {
+    return (
+      <span
+        className={className}
+        style={{ width: size, height: size, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- crest vem de um host externo (crests.football-data.org), sem next/image */}
+        <img src={crestUrl} alt="" width={size} height={size} style={{ objectFit: "contain", maxWidth: "100%", maxHeight: "100%" }} />
+      </span>
+    );
+  }
+
   const path = SHAPE_PATHS[crestShape % SHAPE_PATHS.length];
   const gradId = `crest-grad-${colorPrimary.replace("#", "")}-${colorSecondary.replace("#", "")}-${crestShape}`;
 

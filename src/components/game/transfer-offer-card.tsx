@@ -1,67 +1,54 @@
-import { Badge } from "@/components/ui/badge";
 import { TeamCrest } from "@/components/game/team-crest";
-import { formatFee, formatWage } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TransferOffer } from "@/lib/game/transferOffers";
 
 const KIND_LABEL: Record<TransferOffer["kind"], string> = {
-  RENEWAL: "Renovação",
-  TRANSFER: "Transferência",
-  LOAN: "Empréstimo",
+  BASE: "Assinar com",
+  RENEWAL: "Ficar no",
+  TRANSFER: "Assinar com",
+  LOAN: "Emprestado ao",
 };
 
 export function TransferOfferCard({
   offer,
-  selected,
   onSelect,
+  disabled,
 }: {
   offer: TransferOffer;
-  selected: boolean;
   onSelect: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       className={cn(
-        "w-full rounded-xl border p-4 text-left transition-all",
-        "bg-card/50 hover:border-primary/50 hover:bg-card",
-        selected ? "border-primary ring-1 ring-primary bg-card" : "border-border/60",
+        "flex w-full flex-col items-center gap-2 rounded-xl border border-border/60 bg-card/50 px-3 py-4 text-center transition-all",
+        "hover:border-primary/50 hover:bg-card disabled:opacity-50",
       )}
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <TeamCrest
-            colorPrimary={offer.team.colorPrimary}
-            colorSecondary={offer.team.colorSecondary}
-            crestShape={offer.team.crestShape}
-            crestInitials={offer.team.crestInitials}
-            size={38}
-          />
-          <div className="min-w-0">
-            <p className="truncate font-semibold leading-tight">{offer.team.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {offer.team.leagueName} · {offer.team.countryName}
-            </p>
-          </div>
-        </div>
-        <Badge variant={offer.kind === "RENEWAL" ? "secondary" : "outline"} className="shrink-0 text-[11px]">
-          {KIND_LABEL[offer.kind]}
-        </Badge>
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-foreground">{KIND_LABEL[offer.kind]}</p>
+        <p className="truncate text-base font-bold leading-tight">{offer.team.shortName}</p>
       </div>
 
-      <p className="mb-3 text-sm text-muted-foreground">{offer.pitch}</p>
+      <TeamCrest
+        colorPrimary={offer.team.colorPrimary}
+        colorSecondary={offer.team.colorSecondary}
+        crestShape={offer.team.crestShape}
+        crestInitials={offer.team.crestInitials}
+        crestUrl={offer.team.crestUrl}
+        size={64}
+      />
 
-      <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm">
-        <div>
-          <p className="text-[11px] uppercase text-muted-foreground">Custo</p>
-          <p className="font-semibold">{formatFee(offer.fee)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] uppercase text-muted-foreground">Salário</p>
-          <p className="font-semibold text-primary">{formatWage(offer.wage)}</p>
-        </div>
-      </div>
+      <p className="flex min-w-0 items-center justify-center gap-1 truncate text-[11px] text-muted-foreground">
+        <span className="truncate">{offer.team.leagueName}</span>
+        <span>·</span>
+        <span className="shrink-0">
+          {offer.team.countryFlag} {offer.team.countryCode}
+        </span>
+      </p>
     </button>
   );
 }
